@@ -1427,60 +1427,107 @@ resolve_latest_tag() {
 }
 
 install_x-ui() {
-    cd ${xui_folder%/x-ui}/
+    # ── Build from source (ifwqu/3x-ui fork) ──────────────────────────
+    local build_dir="/tmp/3x-ui-build"
+    local tag_version="dev"
 
-    # Download resources
-    if [ $# == 0 ]; then
-        tag_version=$(resolve_latest_tag)
-        if [[ ! -n "$tag_version" ]]; then
-            echo -e "${red}Failed to fetch x-ui version, it may be due to GitHub API restrictions, please try it later${plain}"
-            exit 1
-        fi
-        echo -e "Got x-ui latest version: ${tag_version}, beginning the installation..."
-        curl -fLR --retry 5 --retry-delay 3 --connect-timeout 15 --speed-limit 1 --speed-time 300 -o ${xui_folder}-linux-$(arch).tar.gz https://github.com/MHSanaei/3x-ui/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz
-        if [[ $? -ne 0 ]]; then
-            echo -e "${red}Downloading x-ui failed, please be sure that your server can access GitHub ${plain}"
-            exit 1
-        fi
-        if [[ ! -s ${xui_folder}-linux-$(arch).tar.gz ]]; then
-            rm ${xui_folder}-linux-$(arch).tar.gz -f
-            echo -e "${red}Downloaded x-ui release archive is empty${plain}"
-            exit 1
-        fi
-    else
-        tag_version=$1
-        # The rolling dev channel ships under a fixed, non-semver tag that is
-        # force-moved to the latest main commit on every push. Accept `dev` as a
-        # convenient alias and skip the numeric floor check for it.
-        if [[ "$tag_version" == "dev" || "$tag_version" == "dev-latest" ]]; then
-            tag_version="dev-latest"
-            echo -e "${yellow}Installing the rolling dev build (tag: dev-latest). This is a per-commit pre-release, not a stable version.${plain}"
-        else
-            tag_version_numeric=${tag_version#v}
-            min_version="2.3.5"
+    echo -e "${green}Building 3x-ui from source (ifwqu/3x-ui)...${plain}"
 
-            if [[ "$(printf '%s\n' "$min_version" "$tag_version_numeric" | sort -V | head -n1)" != "$min_version" ]]; then
-                echo -e "${red}Please use a newer version (at least v2.3.5). Exiting installation.${plain}"
+    # Install Go if missing
+    if ! command -v go &>/dev/null; then
+        echo -e "${yellow}Go not found, installing...${plain}"
+        case "${release}" in
+            ubuntu|debian|armbian)
+                apt-get update -y -q && apt-get install -y -q golang-go
+                ;;
+            centos|fedora|rhel|almalinux|rocky)
+                dnf install -y -q golang
+                ;;
+            arch|manjaro|parch)
+                pacman -S --noconfirm go
+                ;;
+            alpine)
+                apk add go
+                ;;
+            opensuse*|suse*)
+                zypper -q install -y go
+                ;;
+            *)
+                echo -e "${red}Unsupported OS for automatic Go installation. Please install Go manually.${plain}"
                 exit 1
-            fi
-        fi
-
-        url="https://github.com/MHSanaei/3x-ui/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz"
-        echo -e "Beginning to install x-ui ${tag_version}"
-        curl -fLR --retry 5 --retry-delay 3 --connect-timeout 15 --speed-limit 1 --speed-time 300 -o ${xui_folder}-linux-$(arch).tar.gz ${url}
-        if [[ $? -ne 0 ]]; then
-            echo -e "${red}Download x-ui ${tag_version} failed, please check if the version exists ${plain}"
-            exit 1
-        fi
-        if [[ ! -s ${xui_folder}-linux-$(arch).tar.gz ]]; then
-            rm ${xui_folder}-linux-$(arch).tar.gz -f
-            echo -e "${red}Downloaded x-ui release archive is empty${plain}"
-            exit 1
-        fi
+                ;;
+        esac
     fi
+
+    # Install Node.js if missing
+    if ! command -v node &>/dev/null; then
+        echo -e "${yellow}Node.js not found, installing...${plain}"
+        case "${release}" in
+            ubuntu|debian|armbian)
+                apt-get update -y -q && apt-get install -y -q nodejs npm
+                ;;
+            centos|fedora|rhel|almalinux|rocky)
+                dnf install -y -q nodejs npm
+                ;;
+            arch|manjaro|parch)
+                pacman -S --noconfirm nodejs npm
+                ;;
+            alpine)
+                apk add nodejs npm
+                ;;
+            opensuse*|suse*)
+                zypper -q install -y nodejs npm
+                ;;
+            *)
+                echo -e "${red}Unsupported OS for automatic Node.js installation. Please install Node.js manually.${plain}"
+                exit 1
+                ;;
+        esac
+    fi
+
+    # Clone / pull source
+    if [[ -d "${build_dir}" ]]; then
+        cd "${build_dir}" && git pull --ff-only
+    else
+        git clone --depth=1 https://github.com/ifwqu/3x-ui.git "${build_dir}"
+        cd "${build_dir}"
+    fi
+    if [[ $? -ne 0 ]]; then
+        echo -e "${red}Failed to clone 3x-ui source${plain}"
+        exit 1
+    fi
+
+    # Build frontend
+    echo -e "${green}Building frontend...${plain}"
+    cd "${build_dir}/frontend" || exit 1
+    npm install --no-global --ignore-scripts --no-audit --no-fund 2>&1 | tail -3
+    # Symlink vite from global if needed
+    if ! command -v vite &>/dev/null && [[ -f /app/user-packages/node/bin/vite ]]; then
+        ln -sf /app/user-packages/node/bin/vite node_modules/.bin/vite 2>/dev/null || true
+    fi
+    npm run build 2>&1 | tail -5
+    if [[ $? -ne 0 ]]; then
+        echo -e "${red}Frontend build failed${plain}"
+        exit 1
+    fi
+
+    # Build Go binary
+    echo -e "${green}Building Go binary...${plain}"
+    cd "${build_dir}" || exit 1
+    go build -ldflags="-s -w" -o x-ui ./main.go
+    if [[ $? -ne 0 || ! -s x-ui ]]; then
+        echo -e "${red}Go build failed${plain}"
+        exit 1
+    fi
+
+    # ── Prepare install directory ──
+    cd ${xui_folder%/x-ui}/
+    mkdir -p x-ui
+
+    # Download x-ui.sh
     local xui_script_temp="/usr/bin/x-ui-temp.$$"
     rm -f "${xui_script_temp}"
-    curl -fLRo "${xui_script_temp}" https://raw.githubusercontent.com/MHSanaei/3x-ui/main/x-ui.sh
+    curl -fLRo "${xui_script_temp}" https://raw.githubusercontent.com/ifwqu/3x-ui/main/x-ui.sh
     if [[ $? -ne 0 ]]; then
         rm -f "${xui_script_temp}"
         echo -e "${red}Failed to download x-ui.sh${plain}"
@@ -1500,23 +1547,8 @@ install_x-ui() {
         else
             systemctl stop x-ui
         fi
-        # Kill any leftover mtg (MTProto) sidecars. x-ui runs them outside its own
-        # lifecycle, so on Linux a stale one can survive the stop and keep holding
-        # an inbound port with an outdated secret, silently breaking new clients.
-        # The freshly installed panel respawns a clean mtg per inbound on start.
         pkill -f 'mtg-linux-[^ ]* run ' > /dev/null 2>&1 || true
 
-        # bin/ is about to be wiped wholesale by the tar extraction below. The
-        # release only ships known assets (xray/mtg binaries, the bundled
-        # geoip*/geosite*.dat sets) -- anything else in bin/ was placed there
-        # by the admin (e.g. a hand-added custom geoip/geosite file referenced
-        # from a routing rule via "ext:<file>:<code>") and would otherwise be
-        # silently deleted on every update, breaking Xray at next start with
-        # "failed to open <file>: no such file or directory" for any routing
-        # rule that references it. Moved aside rather than copied: a rename
-        # on the same filesystem is atomic (no truncated file if disk space
-        # runs out mid-copy, unlike `cp`) and keeps the snapshot under
-        # /usr/local rather than a separate, possibly small/tmpfs $TMPDIR.
         if [[ -d "${xui_folder}/bin" ]]; then
             custom_bin_backup="${xui_folder%/x-ui}/x-ui-bin-backup.$$"
             rm -rf "${custom_bin_backup}"
@@ -1525,50 +1557,79 @@ install_x-ui() {
                 echo -e "${yellow}Could not back up bin/ -- custom files there will not be preserved across this update${plain}"
             fi
         fi
-        # Sole cleanup path for the backup from here on -- covers both the
-        # two `exit 1`s below (extraction/binary-missing failures) and an
-        # interrupted update (Ctrl-C, signal) before the restore runs.
-        # Cleared once the restore below finishes normally.
         trap '[[ -n "${custom_bin_backup}" ]] && rm -rf "${custom_bin_backup}"' EXIT INT TERM
         rm ${xui_folder}/ -rf
     fi
 
-    # Extract resources and set permissions
-    tar zxvf x-ui-linux-$(arch).tar.gz
-    if [[ $? -ne 0 ]]; then
-        rm x-ui-linux-$(arch).tar.gz -f
-        rm -f "${xui_script_temp}"
-        echo -e "${red}Failed to extract the x-ui release archive -- the previous installation has already been removed, so the panel will not start until this is fixed; try running the installer again${plain}"
-        exit 1
-    fi
-    rm x-ui-linux-$(arch).tar.gz -f
+    # Copy built binary and support files
+    mkdir -p ${xui_folder}/bin
+    cp "${build_dir}/x-ui" ${xui_folder}/x-ui
+    cp "${build_dir}/x-ui.sh" ${xui_folder}/x-ui.sh 2>/dev/null || true
+    cp -r "${build_dir}/internal/web/dist" ${xui_folder}/ 2>/dev/null || true
 
-    cd x-ui
-    if [[ $? -ne 0 || ! -s x-ui ]]; then
+    cd ${xui_folder}
+    if [[ ! -s x-ui ]]; then
         rm -f "${xui_script_temp}"
-        echo -e "${red}Extracted x-ui archive is missing the x-ui binary -- the previous installation has already been removed, so the panel will not start until this is fixed; try running the installer again${plain}"
+        echo -e "${red}Built x-ui binary is missing${plain}"
         exit 1
     fi
     chmod +x x-ui
     chmod +x x-ui.sh
 
+    # ── Download xray core, mtg, and geoip/geosite data ──
+    echo -e "${green}Downloading Xray core, MTProto proxy, and geoip/geosite data...${plain}"
+    case "$(arch)" in
+        amd64) XRAY_ARCH="64"    BIN_ARCH="amd64" ;;
+        i386)  XRAY_ARCH="32"    BIN_ARCH="i386"  ;;
+        arm64) XRAY_ARCH="arm64-v8a" BIN_ARCH="arm64" ;;
+        armv5|armv6|armv7) XRAY_ARCH="arm32-v7a" BIN_ARCH="arm32" ;;
+        *)     XRAY_ARCH="64"    BIN_ARCH="amd64" ;;
+    esac
+    case ${BIN_ARCH} in
+        i386)  MTG_ARCH="386"   ;;
+        arm32) MTG_ARCH="armv7" ;;
+        *)     MTG_ARCH="${BIN_ARCH}" ;;
+    esac
+    MTG_MULTI_VER=$(curl -sfL "https://api.github.com/repos/mhsanaei/mtg-multi/releases/latest" | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -n 1)
+    mkdir -p bin
+    cd bin
+    curl -sfLRO "https://github.com/XTLS/Xray-core/releases/download/v26.7.28/Xray-linux-${XRAY_ARCH}.zip"
+    if [[ -f "Xray-linux-${XRAY_ARCH}.zip" ]]; then
+        unzip -o "Xray-linux-${XRAY_ARCH}.zip"
+        rm -f "Xray-linux-${XRAY_ARCH}.zip" geoip.dat geosite.dat
+        mv xray "xray-linux-${BIN_ARCH}"
+        chmod +x "xray-linux-${BIN_ARCH}"
+    fi
+    MTG_PKG="mtg-multi-${MTG_MULTI_VER#v}-linux-${MTG_ARCH}"
+    curl -sfLRO "https://github.com/mhsanaei/mtg-multi/releases/download/${MTG_MULTI_VER}/${MTG_PKG}.tar.gz"
+    if [[ -f "${MTG_PKG}.tar.gz" ]]; then
+        tar -xzf "${MTG_PKG}.tar.gz"
+        mv "${MTG_PKG}/mtg-multi" "mtg-linux-${BIN_ARCH}"
+        rm -rf "${MTG_PKG}" "${MTG_PKG}.tar.gz"
+        chmod +x "mtg-linux-${BIN_ARCH}"
+    fi
+    curl -sfLRO https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat
+    curl -sfLRO https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat
+    curl -sfLRo geoip_IR.dat https://github.com/chocolate4u/Iran-v2ray-rules/releases/latest/download/geoip.dat
+    curl -sfLRo geosite_IR.dat https://github.com/chocolate4u/Iran-v2ray-rules/releases/latest/download/geosite.dat
+    curl -sfLRo geoip_RU.dat https://github.com/runetfreedom/russia-v2ray-rules-dat/releases/latest/download/geoip.dat
+    curl -sfLRo geosite_RU.dat https://github.com/runetfreedom/russia-v2ray-rules-dat/releases/latest/download/geosite.dat
+    cd ..
+    # Done downloading xray/mtg/geoip
+
     # Check the system's architecture and rename the file accordingly.
     # The panel binary maps GOARCH=arm to "arm32" (internal/xray/process.go),
     # so the Xray binary must be named xray-linux-arm32; mtg keeps plain "arm".
     if [[ $(arch) == "armv5" || $(arch) == "armv6" || $(arch) == "armv7" ]]; then
-        mv bin/xray-linux-$(arch) bin/xray-linux-arm32
-        chmod +x bin/xray-linux-arm32
-        if [[ -f bin/mtg-linux-$(arch) ]]; then
-            mv bin/mtg-linux-$(arch) bin/mtg-linux-arm
-            chmod +x bin/mtg-linux-arm
+        if [[ -f bin/xray-linux-${BIN_ARCH} ]]; then
+            mv bin/xray-linux-${BIN_ARCH} bin/xray-linux-arm32
+        fi
+        if [[ -f bin/mtg-linux-${BIN_ARCH} ]]; then
+            mv bin/mtg-linux-${BIN_ARCH} bin/mtg-linux-arm
         fi
     fi
-    chmod +x x-ui bin/xray-linux-$(arch)
-    if [[ -f bin/mtg-linux-arm ]]; then
-        chmod +x bin/mtg-linux-arm
-    elif [[ -f bin/mtg-linux-$(arch) ]]; then
-        chmod +x bin/mtg-linux-$(arch)
-    fi
+    chmod +x x-ui bin/xray-linux-* 2>/dev/null || true
+    chmod +x bin/mtg-linux-* 2>/dev/null || true
 
     # Restore anything from the old bin/ that the fresh release doesn't ship
     # (custom geoip/geosite files, or anything else an admin hand-placed
@@ -1631,7 +1692,7 @@ install_x-ui() {
     if [[ $release == "alpine" ]]; then
         xui_rc_temp="/etc/init.d/x-ui.tmp.$$"
         rm -f "${xui_rc_temp}"
-        curl -fLRo "${xui_rc_temp}" https://raw.githubusercontent.com/MHSanaei/3x-ui/main/x-ui.rc
+        curl -fLRo "${xui_rc_temp}" https://raw.githubusercontent.com/ifwqu/3x-ui/main/x-ui.rc
         if [[ $? -ne 0 ]]; then
             rm -f "${xui_rc_temp}"
             echo -e "${red}Failed to download x-ui.rc${plain}"
@@ -1696,13 +1757,13 @@ install_x-ui() {
             echo -e "${yellow}Service files not found in tar.gz, downloading from GitHub...${plain}"
             case "${release}" in
                 ubuntu | debian | armbian)
-                    service_unit_url="https://raw.githubusercontent.com/MHSanaei/3x-ui/main/x-ui.service.debian"
+                    service_unit_url="https://raw.githubusercontent.com/ifwqu/3x-ui/main/x-ui.service.debian"
                     ;;
                 arch | manjaro | parch)
-                    service_unit_url="https://raw.githubusercontent.com/MHSanaei/3x-ui/main/x-ui.service.arch"
+                    service_unit_url="https://raw.githubusercontent.com/ifwqu/3x-ui/main/x-ui.service.arch"
                     ;;
                 *)
-                    service_unit_url="https://raw.githubusercontent.com/MHSanaei/3x-ui/main/x-ui.service.rhel"
+                    service_unit_url="https://raw.githubusercontent.com/ifwqu/3x-ui/main/x-ui.service.rhel"
                     ;;
             esac
 
