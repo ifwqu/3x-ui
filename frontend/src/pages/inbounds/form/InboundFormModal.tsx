@@ -40,10 +40,11 @@ import { FormField, rhfZodValidate } from '@/components/form/rhf';
 import { Protocols, TRAFFIC_RESETS } from '@/schemas/primitives';
 import { SockoptStreamSettingsSchema } from '@/schemas/protocols/stream/sockopt';
 import { HysteriaStreamSettingsSchema } from '@/schemas/protocols/stream/hysteria';
-import { createHysteriaTlsSettingsWithDefaultCert } from '@/lib/xray/inbound-tls-defaults';
+import { createHysteriaTlsSettingsWithDefaultCert, createTlsSettingsWithDefaultCert } from '@/lib/xray/inbound-tls-defaults';
 import { NODE_ELIGIBLE_PROTOCOLS } from '@/lib/xray/node-protocols';
 import { VLESS_AUTH_LABEL_KEYS, vlessEncryptionAuthKind } from '@/lib/xray/vless-encryption';
 import { SniffingSchema } from '@/schemas/primitives/sniffing';
+import { RealityStreamSettingsSchema } from '@/schemas/protocols/security';
 import { TcpStreamSettingsSchema } from '@/schemas/protocols/stream/tcp';
 import { KcpStreamSettingsSchema } from '@/schemas/protocols/stream/kcp';
 import { WsStreamSettingsSchema } from '@/schemas/protocols/stream/ws';
@@ -98,6 +99,23 @@ const labelWithHint = (label: string, hint: string) => (
 
 const PROTOCOL_OPTIONS = Object.values(Protocols).map((p) => ({ value: p, label: p }));
 const SHARE_ADDR_STRATEGIES = ['node', 'listen', 'custom'] as const;
+
+/* Preset templates — one-click shorthands for common protocol+transport+security combos.
+ * When selected, the preset auto-configures protocol, network, and security fields. */
+interface PresetTemplate {
+  label: string;
+  protocol: string;
+  network: string;
+  security: string;
+  /** Default fallback URL for REALITY or path for WS/XHTTP. */
+  extra?: Record<string, string>;
+}
+const PRESET_TEMPLATES: PresetTemplate[] = [
+  { label: 'VLESS+REALITY', protocol: 'vless', network: 'tcp', security: 'reality' },
+  { label: 'VLESS+WS+TLS', protocol: 'vless', network: 'ws', security: 'tls' },
+  { label: 'VLESS+XHTTP', protocol: 'vless', network: 'xhttp', security: 'tls' },
+  { label: 'TROJAN+TLS', protocol: 'trojan', network: 'tcp', security: 'tls' },
+];
 const SHARE_ADDR_HOSTNAME_RE =
   /^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)*$/;
 
@@ -235,6 +253,7 @@ export default function InboundFormModal({
   const [scanning, setScanning] = useState(false);
   const [scanResult, setScanResult] = useState<RealityScanResult | null>(null);
   const [activeTab, setActiveTab] = useState('basic');
+  const [preset, setPreset] = useState<string | undefined>(undefined);
   const {
     fallbacks,
     fallbackChildOptions,
@@ -422,6 +441,60 @@ export default function InboundFormModal({
   const clearVlessEnc = () => {
     setV('settings.decryption', 'none');
     setV('settings.encryption', 'none');
+  };
+
+  const applyPreset = (presetLabel: string) => {
+    const tmpl = PRESET_TEMPLATES.find((p) => p.label === presetLabel);
+    if (!tmpl) return;
+    const isVless = tmpl.protocol === 'vless';
+    const settings = createDefaultInboundSettings(tmpl.protocol) ?? undefined;
+    setV('protocol', tmpl.protocol);
+    setV('settings', settings);
+    if (tmpl.protocol === Protocols.TROJAN) {
+      setV('nodeId', null);
+    }
+    // Build the stream settings slice
+    const streamBase: Record<string, unknown> = { network: tmpl.network, security: tmpl.security };
+    if (tmpl.network === 'tcp') {
+      streamBase.tcpSettings = TcpStreamSettingsSchema.parse({ header: { type: 'none' } });
+    } else if (tmpl.network === 'ws') {
+      streamBase.wsSettings = WsStreamSettingsSchema.parse({});
+    } else if (tmpl.network === 'xhttp') {
+      streamBase.xhttpSettings = XHttpStreamSettingsSchema.parse({});
+    }
+    // Add TLS cert defaults when TLS is needed
+    if (tmpl.security === 'tls') {
+      streamBase.tlsSettings = createTlsSettingsWithDefaultCert();
+    }
+    // Add REALITY defaults
+    if (tmpl.security === 'reality') {
+      streamBase.realitySettings = RealityStreamSettingsSchema.parse({
+        show: false,
+        dest: 'www.microsoft.com:443',
+        xver: 0,
+        serverNames: [],
+        privateKey: '',
+        shortIds: [''],
+      });
+    }
+    setV('streamSettings', streamBase);
+    // VLESS flow defaults
+    if (isVless) {
+      setV('settings.decryption', 'none');
+      setV('settings.encryption', 'none');
+    }
+    // Set a reasonable default port
+    if (tmpl.protocol === 'vless' && tmpl.network === 'xhttp') {
+      setV('port', 8443);
+    } else {
+      setV('port', 443);
+    }
+    if (isVless || tmpl.protocol === Protocols.TROJAN) {
+      const sniffing = createDefaultInboundSettings(tmpl.protocol);
+      if (sniffing?.sniffing) {
+        setV('sniffing', sniffing.sniffing);
+      }
+    }
   };
 
   const vlessAuthKind = vlessEncryptionAuthKind(
@@ -635,6 +708,21 @@ export default function InboundFormModal({
       <FormField name="protocol" label={t('pages.inbounds.protocol')}>
         <Select id="protocol" disabled={mode === 'edit'} options={PROTOCOL_OPTIONS} />
       </FormField>
+
+      {mode === 'add' && (
+        <Form.Item label="快速模板">
+          <Select
+            placeholder="选择预设协议组合"
+            allowClear
+            value={preset}
+            onChange={(val) => {
+              setPreset(val);
+              if (val) applyPreset(val);
+            }}
+            options={PRESET_TEMPLATES.map((p) => ({ value: p.label, label: p.label }))}
+          />
+        </Form.Item>
+      )}
 
       <FormField
         name="listen"
