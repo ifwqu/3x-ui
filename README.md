@@ -16,33 +16,33 @@
   <a href="https://pkg.go.dev/github.com/ifwqu/3x-ui/v3"><img src="https://pkg.go.dev/badge/github.com/ifwqu/3x-ui/v3.svg" alt="Go Reference"></a>
 </p>
 
-**3X-UI** is an advanced, open-source web control panel for managing [Xray-core](https://github.com/XTLS/Xray-core) servers. It provides a clean, multi-language interface for deploying, configuring, and monitoring a wide range of proxy and VPN protocols — from a single VPS to multi-node deployments.
+**3X-UI** 是一个先进的开源 Web 控制面板，用于管理 [Xray-core](https://github.com/XTLS/Xray-core) 服务器。它提供简洁、多语言的界面，用于部署、配置和监控各种代理与 VPN 协议——从单台 VPS 到多节点部署。
 
-Built as an enhanced fork of the original X-UI project, 3X-UI adds broader protocol support, improved stability, per-client traffic accounting, and many quality-of-life features.
+3X-UI 作为原始 X-UI 项目的增强分支（fork），增加了更广泛的协议支持、更好的稳定性、按客户端的流量统计以及许多提升使用体验的功能。
 
 > [!IMPORTANT]
-> This project is intended for personal use only. Please do not use it for illegal purposes or in a production environment.
+> 本项目仅供个人使用。请勿将其用于非法目的，也请勿在生产环境中使用。
 
-## Features
+## 功能特性
 
-- **Multi-protocol inbounds** — VLESS, VMess, Trojan, Shadowsocks, WireGuard, Hysteria2, HTTP, SOCKS (Mixed), Dokodemo-door / Tunnel, and TUN.
-- **Modern transports & security** — TCP (Raw), mKCP, WebSocket, gRPC, HTTPUpgrade, and XHTTP, secured with TLS, XTLS, and REALITY.
-- **Fallbacks** — serve multiple protocols on a single port (e.g. VLESS and Trojan on 443) using Xray's fallback support.
-- **Per-client management** — traffic quotas, expiry dates, IP limits, live online status, and one-click share links, QR codes, and subscriptions.
-- **Traffic statistics** — per inbound, per client, and per outbound, with reset controls.
-- **Multi-node support** — manage and scale across multiple servers from a single panel.
-- **Outbound & routing** — WARP, NordVPN, custom routing rules, load balancers, and outbound proxy chaining.
-- **Built-in subscription server** with multiple output formats and [custom page templates](docs/custom-subscription-templates.md).
-- **Telegram bot** for remote monitoring and management.
-- **RESTful API** with in-panel Swagger documentation.
-- **Flexible storage** — SQLite (default) or PostgreSQL.
-- **13 UI languages** with dark and light themes.
-- **Fail2ban integration** for enforcing per-client IP limits.
+- **多协议入站** — VLESS、VMess、Trojan、Shadowsocks、WireGuard、Hysteria2、HTTP、SOCKS (Mixed)、Dokodemo-door / Tunnel 和 TUN。
+- **现代传输与安全** — TCP (Raw)、mKCP、WebSocket、gRPC、HTTPUpgrade 和 XHTTP，并通过 TLS、XTLS 和 REALITY 加密。
+- **回落 (Fallback)** — 通过 Xray 的 fallback 功能在单个端口上提供多种协议（例如在 443 端口上同时使用 VLESS 和 Trojan）。
+- **按客户端管理** — 流量配额、到期日期、IP 限制、实时在线状态，以及一键分享链接、二维码和订阅。
+- **流量统计** — 按入站、按客户端、按出站统计，并支持重置控制。
+- **多节点支持** — 从单一面板管理并扩展到多台服务器。
+- **出站与路由** — WARP、NordVPN、自定义路由规则、负载均衡器和出站代理链。
+- **内置订阅服务器**，支持多种输出格式和[自定义页面模板](docs/custom-subscription-templates.md)。
+- **Telegram 机器人**，用于远程监控和管理。
+- **RESTful API**，带有面板内置的 Swagger 文档。
+- **灵活的存储** — SQLite（默认）或 PostgreSQL。
+- **13 种界面语言**，支持深色和浅色主题。
+- **Fail2ban 集成**，用于强制执行按客户端的 IP 限制。
 
-## Screenshots
+## 截图
 
 <details>
-<summary>Click to expand</summary>
+<summary>点击展开</summary>
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="./media/01-overview-dark.png">
@@ -66,131 +66,131 @@ Built as an enhanced fork of the original X-UI project, 3X-UI adds broader proto
 
 </details>
 
-## Quick Start
+## 快速开始
 
 ```bash
 bash <(curl -Ls https://raw.githubusercontent.com/ifwqu/3x-ui/main/install.sh)
 ```
 
-To install a specific version, append its tag (e.g. `v3.4.0`):
+若要安装特定版本，请在命令后附加对应的标签（例如 `v3.4.0`）：
 
 ```bash
 bash <(curl -Ls https://raw.githubusercontent.com/ifwqu/3x-ui/main/install.sh) v3.4.0
 ```
 
-To install the rolling **dev** build (latest per-commit pre-release from `main`, not a stable release), pass `dev-latest`:
+若要安装滚动更新的 **dev** 版本（来自 `main` 的最新逐次提交预发布版本，而非稳定版本），请传入 `dev-latest`：
 
 ```bash
 bash <(curl -Ls https://raw.githubusercontent.com/ifwqu/3x-ui/main/install.sh) dev-latest
 ```
 
-During installation a random username, password, and access path are generated. After installation, run `x-ui` to open the management menu, where you can start/stop the service, view or reset your login credentials, manage SSL certificates, and more.
+安装过程中会生成随机的用户名、密码和访问路径。安装完成后，运行 `x-ui` 打开管理菜单，您可以在其中启动/停止服务、查看或重置登录凭据、管理 SSL 证书等。
 
-For full documentation, please visit the [project Wiki](https://github.com/ifwqu/3x-ui/wiki).
+完整文档请参阅 [项目Wiki](https://github.com/ifwqu/3x-ui/wiki)。
 
-### Unattended install
+### 无人值守安装
 
-The installer also runs **non-interactively** for cloud-init.
-Set `XUI_NONINTERACTIVE=1` (or pipe with no TTY) and it installs end-to-end with
-zero prompts, generating random credentials and writing them to
-`/etc/x-ui/install-result.env`. See [`deploy/`](deploy/) for:
+安装程序也可以**非交互式**运行，适用于 cloud-init。
+设置 `XUI_NONINTERACTIVE=1`（或在无 TTY 的情况下通过管道传入），它就会全程
+零提示地完成端到端安装，生成随机凭据并写入
+`/etc/x-ui/install-result.env`。请参阅 [`deploy/`](deploy/)：
 
-- [Cloud-init user-data](deploy/cloud-init/) — unattended install on any cloud (Hetzner/AWS/DO/Vultr/GCP/Azure/Oracle)
-- [Hetzner Cloud notes](deploy/marketplace/hetzner/) — cloud-init deployment on Hetzner
+- [Cloud-init user-data](deploy/cloud-init/) — 在任意云平台上无人值守安装（Hetzner/AWS/DO/Vultr/GCP/Azure/Oracle）
+- [Hetzner Cloud 说明](deploy/marketplace/hetzner/) — 在 Hetzner 上基于 cloud-init 的部署
 
-## Supported Platforms
+## 支持的平台
 
-**Operating systems:** Ubuntu, Debian, Armbian, Fedora, CentOS, RHEL, AlmaLinux, Rocky Linux, Oracle Linux, Amazon Linux, Virtuozzo, Arch, Manjaro, Parch, openSUSE (Tumbleweed / Leap), Alpine, and Windows.
+**操作系统：** Ubuntu、Debian、Armbian、Fedora、CentOS、RHEL、AlmaLinux、Rocky Linux、Oracle Linux、Amazon Linux、Virtuozzo、Arch、Manjaro、Parch、openSUSE (Tumbleweed / Leap)、Alpine 和 Windows。
 
-**Architectures:** `amd64` · `386` · `arm64` (aarch64) · `armv7` · `armv6` · `armv5` · `s390x`.
+**架构：** `amd64` · `386` · `arm64` (aarch64) · `armv7` · `armv6` · `armv5` · `s390x`。
 
-## Database Options
+## 数据库选项
 
-3X-UI supports two backends, chosen during the install:
+3X-UI 支持两种后端，可在安装时选择：
 
-- **SQLite** (default) — a single file at `/etc/x-ui/x-ui.db`. Zero setup, ideal for small and medium deployments.
-- **PostgreSQL** — recommended for high client counts or multi-node setups. The installer can install PostgreSQL locally for you, or accept a DSN to an existing server.
+- **SQLite**（默认）— 位于 `/etc/x-ui/x-ui.db` 的单个文件。无需配置，适合中小型部署。
+- **PostgreSQL** — 推荐用于大量客户端或多节点设置。安装程序可以为您在本地安装 PostgreSQL，或接受指向现有服务器的 DSN。
 
-At runtime the backend is selected via environment variables (the installer writes these to `/etc/default/x-ui` for you):
+运行时通过环境变量选择后端（安装程序会为您写入 `/etc/default/x-ui`）：
 
 ```
 XUI_DB_TYPE=postgres
 XUI_DB_DSN=postgres://xui:password@127.0.0.1:5432/xui?sslmode=disable
 ```
 
-### Migrating an existing SQLite install to PostgreSQL
+### 将现有的 SQLite 安装迁移到 PostgreSQL
 
 ```bash
 x-ui migrate-db --dsn "postgres://xui:password@127.0.0.1:5432/xui?sslmode=disable"
-# then set XUI_DB_TYPE and XUI_DB_DSN in /etc/default/x-ui and restart:
+# 然后在 /etc/default/x-ui 中设置 XUI_DB_TYPE 和 XUI_DB_DSN 并重启：
 systemctl restart x-ui
 ```
 
-The source SQLite file is left untouched; remove it manually once you have verified the new backend.
+源 SQLite 文件保持不变；在确认新后端正常工作后，请手动删除它。
 
 ### Docker
 
-The default `docker compose up -d` keeps using SQLite. To run with the bundled PostgreSQL service, uncomment the two `XUI_DB_*` env lines in `docker-compose.yml` and start with the profile:
+默认的 `docker compose up -d` 仍使用 SQLite。若要使用捆绑的 PostgreSQL 服务运行，请取消注释 `docker-compose.yml` 中的两行 `XUI_DB_*` 环境变量，并使用该 profile 启动：
 
 ```bash
 docker compose --profile postgres up -d
 ```
 
-The image bundles Fail2ban (enabled by default) to enforce per-client **IP limits**. Fail2ban bans offenders with `iptables`, which requires the `NET_ADMIN` capability. `docker-compose.yml` already grants it via `cap_add`; if you start the container with `docker run` instead, add the capabilities yourself, otherwise bans are logged but never applied:
+该镜像捆绑了 Fail2ban（默认启用），用于强制执行按客户端的 **IP 限制**。Fail2ban 使用 `iptables` 封禁违规者，这需要 `NET_ADMIN` 权限。`docker-compose.yml` 已通过 `cap_add` 授予该权限；如果您改用 `docker run` 启动容器，请自行添加这些权限，否则封禁只会被记录而永远不会生效：
 
 ```bash
 docker run -d --cap-add=NET_ADMIN --cap-add=NET_RAW ... ghcr.io/ifwqu/3x-ui
 ```
 
-## Environment Variables
+## 环境变量
 
-| Variable | Description | Default |
+| 变量 | 说明 | 默认值 |
 | --- | --- | --- |
-| `XUI_DB_TYPE` | Database backend: `sqlite` or `postgres` | `sqlite` |
-| `XUI_DB_DSN` | PostgreSQL connection string (when `XUI_DB_TYPE=postgres`) | — |
-| `XUI_DB_FOLDER` | Directory for the SQLite database file | `/etc/x-ui` |
-| `XUI_DB_MAX_OPEN_CONNS` | Maximum open connections (PostgreSQL pool) | — |
-| `XUI_DB_MAX_IDLE_CONNS` | Maximum idle connections (PostgreSQL pool) | — |
-| `XUI_INIT_WEB_BASE_PATH` | The initial URI path for the web panel | `/` |
-| `XUI_ENABLE_FAIL2BAN` | Enable Fail2ban-based IP-limit enforcement | `true` |
-| `XUI_LOG_LEVEL` | Log verbosity (`debug`, `info`, `warning`, `error`) | `info` |
-| `XUI_DEBUG` | Enable debug mode | `false` |
-| `XUI_TUNNEL_HEALTH_MONITOR` | Enable the tunnel health monitor (probes a URL and restarts xray after repeated failures; a restart drops all clients) | `false` |
-| `XUI_TUNNEL_HEALTH_PROXY` | Proxy the probe is sent through; point it at a local xray inbound so the probe tests the tunnel (e.g. `socks5://127.0.0.1:1080`). Empty means the probe only checks host connectivity | — |
-| `XUI_TUNNEL_HEALTH_URL` | URL probed for tunnel health | `https://www.cloudflare.com/cdn-cgi/trace` |
-| `XUI_TUNNEL_HEALTH_INTERVAL` | Interval between probes | `30s` |
-| `XUI_TUNNEL_HEALTH_TIMEOUT` | Per-probe timeout | `10s` |
-| `XUI_TUNNEL_HEALTH_FAILURES` | Consecutive failures before a restart is triggered | `3` |
-| `XUI_TUNNEL_HEALTH_COOLDOWN` | Minimum delay between consecutive restarts | `5m` |
+| `XUI_DB_TYPE` | 数据库后端：`sqlite` 或 `postgres` | `sqlite` |
+| `XUI_DB_DSN` | PostgreSQL 连接字符串（当 `XUI_DB_TYPE=postgres` 时） | — |
+| `XUI_DB_FOLDER` | SQLite 数据库文件所在目录 | `/etc/x-ui` |
+| `XUI_DB_MAX_OPEN_CONNS` | 最大打开连接数（PostgreSQL 连接池） | — |
+| `XUI_DB_MAX_IDLE_CONNS` | 最大空闲连接数（PostgreSQL 连接池） | — |
+| `XUI_INIT_WEB_BASE_PATH` | Web 面板的初始 URI 路径 | `/` |
+| `XUI_ENABLE_FAIL2BAN` | 启用基于 Fail2ban 的 IP 限制 | `true` |
+| `XUI_LOG_LEVEL` | 日志级别（`debug`、`info`、`warning`、`error`） | `info` |
+| `XUI_DEBUG` | 启用调试模式 | `false` |
+| `XUI_TUNNEL_HEALTH_MONITOR` | 启用隧道健康监控（探测某个 URL，在连续多次失败后重启 xray；重启会断开所有客户端） | `false` |
+| `XUI_TUNNEL_HEALTH_PROXY` | 探测请求所经过的代理；将其指向本地 xray 入站，使探测能够测试隧道（例如 `socks5://127.0.0.1:1080`）。留空表示探测仅检查主机连通性 | — |
+| `XUI_TUNNEL_HEALTH_URL` | 用于检测隧道健康状况的探测 URL | `https://www.cloudflare.com/cdn-cgi/trace` |
+| `XUI_TUNNEL_HEALTH_INTERVAL` | 两次探测之间的间隔 | `30s` |
+| `XUI_TUNNEL_HEALTH_TIMEOUT` | 单次探测的超时时间 | `10s` |
+| `XUI_TUNNEL_HEALTH_FAILURES` | 触发重启前的连续失败次数 | `3` |
+| `XUI_TUNNEL_HEALTH_COOLDOWN` | 两次连续重启之间的最小间隔 | `5m` |
 
-## Supported Languages
+## 支持的语言
 
-The panel UI is available in 13 languages:
+面板界面提供 13 种语言：
 
 English · فارسی · العربية · 中文（简体） · 中文（繁體） · Español · Русский · Українська · Türkçe · Tiếng Việt · 日本語 · Bahasa Indonesia · Português (Brasil)
 
-## Contributing
+## 贡献
 
-Contributions are welcome. Please read the [Contributing Guide](/CONTRIBUTING.md) before opening an issue or pull request.
+欢迎贡献。在提交 issue 或 pull request 之前，请阅读[贡献指南](/CONTRIBUTING.md)。
 
-## A Special Thanks to
+## 特别感谢
 
 - [alireza0](https://github.com/alireza0/)
 
-## Acknowledgment
+## 致谢
 
-- [Iran v2ray rules](https://github.com/chocolate4u/Iran-v2ray-rules) (License: **GPL-3.0**): _Enhanced v2ray/xray and v2ray/xray-clients routing rules with built-in Iranian domains and a focus on security and adblocking._
-- [Russia v2ray rules](https://github.com/runetfreedom/russia-v2ray-rules-dat) (License: **GPL-3.0**): _This repository contains automatically updated V2Ray routing rules based on data on blocked domains and addresses in Russia._
+- [Iran v2ray rules](https://github.com/chocolate4u/Iran-v2ray-rules) (许可证: **GPL-3.0**): _增强的 v2ray/xray 和 v2ray/xray-clients 路由规则，内置伊朗域名，专注于安全性和广告拦截。_
+- [Russia v2ray rules](https://github.com/runetfreedom/russia-v2ray-rules-dat) (许可证: **GPL-3.0**): _此仓库包含基于俄罗斯被阻止域名和地址数据自动更新的 V2Ray 路由规则。_
 
-## Community Tools
+## 社区工具
 
-Tools and integrations built by the community around 3x-ui.
+社区围绕 3x-ui 构建的工具和集成。
 
-- [terraform-provider-3x-ui](https://github.com/batonogov/terraform-provider-threexui) (License: **MIT**): _Manage inbounds, clients, panel settings, and Xray configuration as code with Terraform / OpenTofu._
+- [terraform-provider-3x-ui](https://github.com/batonogov/terraform-provider-threexui) (许可证: **MIT**): _使用 Terraform / OpenTofu 通过代码管理入站、客户端、面板设置和 Xray 配置。_
 
-## Support project
+## 支持项目
 
-**If this project is helpful to you, you may wish to give it a**:star2:
+**如果这个项目对您有帮助，您可以给它一个**:star2:
 
 <a href="https://www.buymeacoffee.com/MHSanaei" target="_blank">
 <img src="./media/default-yellow.png" alt="Buy Me A Coffee" style="height: 70px !important;width: 277px !important;" >
@@ -201,6 +201,6 @@ Tools and integrations built by the community around 3x-ui.
    <img src="./media/donation-button-black.svg" alt="Crypto donation button by NOWPayments">
 </a>
 
-## Stargazers over Time
+## 随时间变化的星标数
 
 [![Stargazers over time](https://starchart.cc/ifwqu/3x-ui.svg?variant=adaptive)](https://starchart.cc/ifwqu/3x-ui)
