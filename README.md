@@ -25,6 +25,7 @@
 
 ## 功能特性
 
+- **一键搭建模板** 🚀 — 添加入站时支持 **快速模板** 预设，一键生成 VLESS+REALITY、VLESS+WS+TLS、VLESS+XHTTP、TROJAN+TLS 组合，自动填充协议、传输、安全及端口配置。
 - **多协议入站** — VLESS、VMess、Trojan、Shadowsocks、WireGuard、Hysteria2、HTTP、SOCKS (Mixed)、Dokodemo-door / Tunnel 和 TUN。
 - **现代传输与安全** — TCP (Raw)、mKCP、WebSocket、gRPC、HTTPUpgrade 和 XHTTP，并通过 TLS、XTLS 和 REALITY 加密。
 - **回落 (Fallback)** — 通过 Xray 的 fallback 功能在单个端口上提供多种协议（例如在 443 端口上同时使用 VLESS 和 Trojan）。
@@ -67,6 +68,9 @@
 </details>
 
 ## 快速开始
+
+> 此安装脚本会从源码构建面板，自动安装 Go 和 Node.js（如需要），
+> 始终包含最新的一键搭建模板等功能，无需等待发布版本。
 
 ```bash
 bash <(curl -Ls https://raw.githubusercontent.com/ifwqu/3x-ui/main/install.sh)
