@@ -1,0 +1,93 @@
+---
+title: 一键搭建
+description: 通过一键脚本快速创建 VLESS+REALITY、VLESS+WS+TLS、VLESS+XHTTP、TROJAN+TLS 等节点，无需手动配置。
+icon: Zap
+---
+
+3x-ui 提供了一键搭建脚本，可以在已安装面板或未安装面板的服务器上，自动创建特定协议组合的入站节点。
+
+## 脚本列表
+
+| 脚本 | 协议 | 传输 | 安全 | 端口 | 说明 |
+|------|------|------|------|------|------|
+| `vless-reality.sh` | VLESS | TCP | REALITY | 443 | 无需证书，抗审查最强 |
+| `vless-ws-tls-arm.sh` | VLESS | WebSocket | TLS | 443 | ARM 架构优化，兼容 CDN |
+| `vless-xhttp.sh` | VLESS | XHTTP | TLS | 8443 | 新一代 HTTP 多路复用传输 |
+| `trojan-tls.sh` | Trojan | TCP | TLS | 443 | 经典 Trojan 协议 |
+
+## 快速使用
+
+```bash title="VLESS+REALITY（推荐，无需域名）"
+bash <(curl -Ls https://raw.githubusercontent.com/ifwqu/3x-ui/main/deploy/onekey/vless-reality.sh)
+```
+
+```bash title="VLESS+WS+TLS（ARM 优化版，需要域名）"
+bash <(curl -Ls https://raw.githubusercontent.com/ifwqu/3x-ui/main/deploy/onekey/vless-ws-tls-arm.sh)
+```
+
+```bash title="VLESS+XHTTP（需要域名，Xray 1.8.0+）"
+bash <(curl -Ls https://raw.githubusercontent.com/ifwqu/3x-ui/main/deploy/onekey/vless-xhttp.sh)
+```
+
+```bash title="TROJAN+TLS（需要域名，支持回落）"
+bash <(curl -Ls https://raw.githubusercontent.com/ifwqu/3x-ui/main/deploy/onekey/trojan-tls.sh)
+```
+
+## 脚本功能
+
+每个脚本都具备以下能力：
+
+### 自动检测
+
+- **系统架构**：自动识别 `amd64`、`arm64`、`armv7` 等架构
+- **公网 IP**：通过多个 API 服务自动获取服务器公网 IPv4 地址
+
+### 面板管理
+
+- **自动安装**：如果服务器未安装 3x-ui 面板，脚本会自动执行安装
+- **API 对接**：自动获取面板登录凭据和 API Token，通过面板 API 创建入站
+- **自动重启**：入站创建后自动重启 Xray 使配置生效
+
+### SSL 证书（TLS 类脚本）
+
+需要域名的脚本会自动执行以下操作：
+
+1. 安装 `acme.sh`（如未安装）
+2. 通过 Let's Encrypt 签发 SSL 证书
+3. 将证书安装到 `/root/cert/<域名>/` 目录
+4. 配置面板使用该证书
+
+### 连接信息输出
+
+执行完毕后会输出：
+
+- 分享链接（v2rayN / Nekobox / Shadowrocket 等客户端可直接导入）
+- 客户端配置参数（地址、端口、UUID、传输方式等）
+
+## 前置条件
+
+### VLESS+REALITY
+
+- **无需域名**，无需证书，开箱即用
+- 推荐优先使用，抗审查能力最强
+
+### VLESS+WS+TLS / VLESS+XHTTP / TROJAN+TLS
+
+- 需要拥有一个域名，并将 DNS A/AAAA 记录指向服务器 IP
+- 端口 80 对外开放（用于 Let's Encrypt 证书签发）
+- 建议先测试域名解析是否正常：
+  ```bash
+  ping your-domain.com
+  ```
+
+## 注意事项
+
+- 所有脚本都需要 **root 权限** 运行
+- **VLESS+REALITY**：不需要域名和证书，随机生成 REALITY 密钥对和目标网站
+- **VLESS+WS+TLS**：WebSocket 可套 CDN（如 Cloudflare），需确保 CDN 开启 WebSocket 支持
+- **VLESS+XHTTP**：需要 Xray 内核 v1.8.0+，脚本会自动检测并升级
+- **TROJAN+TLS**：支持回落（Fallback）配置，可将非 Trojan 流量回落至指定端口伪装成 Web 服务
+
+## 源码
+
+所有一键搭建脚本位于仓库的 `deploy/onekey/` 目录下，欢迎查阅和贡献。
